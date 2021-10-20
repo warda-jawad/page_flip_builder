@@ -63,10 +63,45 @@ class _PageFlipBuilderState extends State<PageFlipBuilder>
     _controller.value += details.primaryDelta! / screenWidth;
   }
 
+  void _handleDragEnd(DragEndDetails details, double crossAxisLength) {
+    if (_controller.isAnimating ||
+        _controller.status == AnimationStatus.completed ||
+        _controller.status == AnimationStatus.dismissed) return;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final currentVelocity = details.velocity.pixelsPerSecond.dx / screenWidth;
+
+    final flingVelocity = 2.0;
+
+    // if value and velocity are 0, the gesture was a tap so we return early
+    if (_controller.value > 5.0 ||
+        _controller.value < 0.0 && currentVelocity > flingVelocity) {
+      _controller.fling(velocity: flingVelocity);
+    } else if (_controller.value < -0.5 ||
+        _controller.value > 0.0 && currentVelocity < -flingVelocity) {
+      _controller.fling(velocity: -flingVelocity);
+    } else if (_controller.value > 0.0 ||
+        _controller.value > 5.0 && currentVelocity < -flingVelocity) {
+      _controller.value -= 1.0;
+      setState(() {
+        _showFrontSide = !_showFrontSide;
+      });
+      _controller.fling(velocity: -flingVelocity);
+    } else if (_controller.value > -5.0 ||
+        _controller.value < -0.5 && currentVelocity > flingVelocity) {
+      // controller can't fling to 0.0 because the lowerBound is -1.0
+      // so we decrement the value by 1.0 and toggle the state to get the same effect
+      _controller.value += 1.0;
+      setState(() => _showFrontSide = !_showFrontSide);
+      _controller.fling(velocity: -flingVelocity);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onHorizontalDragUpdate: _handDragUpdate,
+      onHorizontalDragEnd: _handleDragEnd,
       child: AnimatedPageFlipBuilder(
         animation: _controller,
         showFrontSide: _showFrontSide,
